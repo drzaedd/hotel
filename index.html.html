@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام الإيرادات والمصاريف اليومية - إعداد وبرمجة الدكتور زيد دنون</title>
+<style>
+:root{--brand:#0ea5a0;--ink:#0f172a;--muted:#475569;--bg:#f6f8fb}
+*{box-sizing:border-box}
+body{font-family:Cairo,system-ui,Arial,sans-serif;background:var(--bg);margin:0;color:var(--ink)}
+header{background:var(--brand);color:#fff;padding:14px 18px;text-align:center;font-weight:800}
+.container{max-width:1200px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:12px;box-shadow:0 4px 14px #0001;margin-bottom:14px;overflow:hidden;border:1px solid #e5e7eb}
+.card h2{margin:0;padding:12px 14px;background:#f0f7f4;border-bottom:1px solid #e5e7eb;font-size:18px}
+.content{padding:12px 14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:0;background:var(--brand);color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;cursor:pointer}
+.btn.danger{background:#ef4444}
+.btn.gray{background:#e2e8f0;color:#111}
+.btn.secondary{background:#0ea5a033;color:#0f172a;border:1px solid #0ea5a0}
+.input{width:100%;height:36px;border:1px solid #e5e7eb;border-radius:10px;padding:6px 10px;font-size:14px}
+.table-wrap{overflow-x:auto;border:1px solid #e5e7eb;border-radius:10px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+table.wide{min-width:1900px}
+table.wide-sm{min-width:1000px}
+thead{background:#f1f5f9}
+th,td{padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:center;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* إظهار عناوين الإيرادات كاملة مع التفاف */
+#revTable th{white-space:normal;line-height:1.35;font-weight:800}
+tbody input, tbody select{width:100%;height:32px;font-size:13px;padding:4px 6px}
+tfoot td{font-weight:700;background:#ecfdf5}
+.value{font-weight:800}
+.net-positive{color:#047857}
+.net-negative{color:#b91c1c}
+.note{color:#64748b;font-size:12px}
+@media print{.noprint{display:none}; .container{max-width:100%;padding:0}; .card{box-shadow:none;border-radius:0;border:0}}
+@page{size:A4 landscape;margin:10mm}
+
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#0f766e;color:#fff;
+  padding:8px 14px;border-radius:999px;box-shadow:0 6px 20px #0002;font-weight:700;z-index:9999;display:none}
+.toast.show{display:block;animation:fade 2s ease-in-out}
+@keyframes fade{0%{opacity:0;transform:translate(-50%,-6px)}10%{opacity:1;transform:translate(-50%,0)}
+90%{opacity:1}100%{opacity:0}}
+
+/* v19c: Stack home searches vertically */
+#homeCard .content > .row{flex-direction:column !important; gap:18px}
+#homeCard .content > .row > div{min-width:100% !important; width:100%}
+#homeCard .table-wrap{width:100%}
+</style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="autoToast" class="toast">💾 تم الحفظ تلقائيًا</div>
+<header>نظام الإيرادات والمصاريف اليومية - إعداد وبرمجة الدكتور زيد دنون</header>
+<div class="container">
+
+<!-- الصفحة الرئيسية -->
+<div class="card" id="homeCard">
+  <h2>الصفحة الرئيسية</h2>
+  <div class="content">
+    <div class="row" style="gap:10px;flex-wrap:wrap">
+      <button class="btn" id="gotoDaily">فتح السجل اليومي</button>
+      <button class="btn gray" id="gotoHome" style="display:none">العودة للصفحة الرئيسية</button>
+    </div>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #e5e7eb">
+    <div class="row" style="gap:20px">
+      <div style="flex:1;min-width:320px">
+        <h3 style="margin:0 0 6px 0">بحث غرفة في يوم محدد</h3>
+        <div class="row">
+          <input id="qRoomDay" class="input" placeholder="رقم الغرفة">
+          <input id="qDateDay" type="date" class="input">
+          <button class="btn" id="runRoomDay">بحث</button>
+        </div>
+        <div class="table-wrap" style="margin-top:8px"><table id="tableRoomDay" class="wide-sm"><thead><tr>
+          <th>رقم الغرفة</th><th>اسم النزيل</th><th>الجنسية</th><th>من</th><th>إلى</th><th>قيمة الليلة</th><th>الإيجار</th><th>المدفوع</th><th>المتبقي</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+      <div style="flex:1;min-width:320px">
+        <h3 style="margin:0 0 6px 0">بحث إيرادات غرفة حسب فترة</h3>
+        <div class="row">
+          <input id="qRoomRange" class="input" placeholder="رقم الغرفة">
+          <input id="qFromRoom" type="date" class="input">
+          <input id="qToRoom" type="date" class="input">
+          <button class="btn" id="runRoomRange">بحث</button>
+        </div>
+        <div class="table-wrap" style="margin-top:8px"><table id="tableRoomRange" class="wide-sm"><thead><tr>
+          <th>رقم الغرفة</th><th>اسم النزيل</th><th>من</th><th>إلى</th><th>الليالي</th><th>الإيجار</th>
+        </tr></thead><tbody></tbody><tfoot><tr><td colspan="5">الإجمالي</td><td id="sumRoomRange">0.00</td></tr></tfoot></table></div>
+      </div>
+    </div>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #e5e7eb">
+    <div class="row" style="gap:20px">
+      <div style="flex:1;min-width:320px">
+        <h3 style="margin:0 0 6px 0">مجموع المصاريف يوميًا داخل فترة</h3>
+        <div class="row">
+          <input id="qFromExp" type="date" class="input">
+          <input id="qToExp" type="date" class="input">
+          <button class="btn" id="runExpRange">بحث</button>
+        </div>
+        <div class="note">ملاحظة: تم إضافة تاريخ داخلي لكل مصروف (مخفي في الجدول) لتمكين البحث حسب التاريخ.</div>
+        <div class="table-wrap" style="margin-top:8px"><table id="tableExpRange" class="wide-sm"><thead><tr>
+          <th>اليوم</th><th>إجمالي المصاريف (ر.س)</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+      <div style="flex:1;min-width:320px">
+        <h3 style="margin:0 0 6px 0">مجموع الإيرادات يوميًا داخل فترة</h3>
+        <div class="row">
+          <input id="qFromDaily" type="date" class="input">
+          <input id="qToDaily" type="date" class="input">
+          <button class="btn" id="runDailyTotals">احسب</button>
+        </div>
+        <div class="table-wrap" style="margin-top:8px"><table id="tableDailyTotals" class="wide-sm"><thead><tr>
+          <th>اليوم</th><th>إجمالي الإيرادات (حسب تاريخ الدخول)</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- البيانات الأساسية -->
+<div class="card">
+  <h2>البيانات الأساسية</h2>
+  <div class="content">
+    <div class="row">
+      <div style="flex:1">
+        <label style="display:block;margin:0 0 6px 0;color:#334155">اسم المشروع</label>
+        <input id="projectName" class="input" placeholder="اختياري">
+      </div>
+      <div style="flex:1">
+        <label style="display:block;margin:0 0 6px 0;color:#334155">تاريخ اليوم</label>
+        <div class="row">
+          <select id="daySel" class="input" style="flex:1"></select>
+          <select id="monthSel" class="input" style="flex:1"></select>
+          <select id="yearSel" class="input" style="flex:1"></select>
+        </div>
+      </div>
+    </div>
+    <div class="row noprint" style="justify-content:flex-end;gap:10px;margin-top:12px">
+      <button id="saveAll" class="btn">حفظ</button>
+      <button id="resetAll" class="btn gray">إعادة ضبط</button>
+      <button onclick="window.print()" class="btn">طباعة</button>
+    </div>
+  </div>
+</div>
+
+<!-- الإيرادات اليومية -->
+<div class="card" id="revenuesCard">
+  <h2>الإيرادات اليومية</h2>
+  <div class="content">
+    <div class="row noprint" style="justify-content:space-between"><button class="btn gray" id="backFromDaily" style="display:none">العودة للصفحة الرئيسية</button>
+      <div class="note">أدخل السجلات وسيتم الحساب تلقائيًا.</div>
+      <div>
+        <button class="btn" id="addRev">+ إضافة صف</button>
+        <button class="btn danger" id="clearRev">مسح الجدول</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="revTable" class="wide">
+        <colgroup>
+          <col style="width:6%"><col style="width:11%"><col style="width:7%"><col style="width:10%">
+          <col style="width:10%"><col style="width:7%"><col style="width:9%"><col style="width:6%">
+          <col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:8%">
+          <col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:10%"><col style="width:7%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>رقم الغرفة</th>
+            <th>اسم النزيل</th>
+            <th>الجنسية</th>
+            <th>الهوية/الإقامة/الجواز</th>
+            <th>رقم الجوال</th>
+            <th>نوع الحجز</th>
+            <th>طريقة الدفع</th>
+            <th>عدد أيام الحجز (ليالي)</th>
+            <th>من تاريخ (Check‑In)</th>
+            <th>إلى تاريخ (Check‑Out)</th>
+            <th>ساعة الدخول (24h)</th>
+            <th>ساعة المغادرة (24h)</th>
+            <th>قيمة الليلة (ر.س)</th>
+            <th>إجمالي الإيجار (ر.س)</th>
+            <th>المبلغ المدفوع (ر.س)</th>
+            <th>المبلغ المتبقي (ر.س)</th>
+            <th>ملاحظات</th>
+            <th>حذف الصف</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="12">الإجماليات</td>
+            <td id="revNightTotal">0.00</td>
+            <td id="revRentTotal">0.00</td>
+            <td id="revPaidTotal">0.00</td>
+            <td id="revRemainTotal">0.00</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div style="flex:1">
+        <table id="revBreakTable" class="wide-sm" style="min-width:700px">
+          <thead>
+            <tr><th colspan="2" style="text-align:center">تفصيل الإيرادات حسب طريقة الدفع</th></tr>
+            <tr><th>البند</th><th>القيمة (ر.س)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>الإيرادات أونلاين</td><td id="sumOnline">0.00</td></tr>
+            <tr><td>الإيرادات نقداً</td><td id="sumCash">0.00</td></tr>
+            <tr><td>الإيرادات شبكة</td><td id="sumPos">0.00</td></tr>
+            <tr><td>الإيرادات تحويل بنكي</td><td id="sumBank">0.00</td></tr>
+            <tr><td>الإيرادات آجل</td><td id="sumCredit">0.00</td></tr>
+            <tr><td style="font-weight:800">مجموع الإيرادات</td><td id="sumMethodsTotal" style="font-weight:800">0.00</td></tr>
+            <tr><td>الإيرادات غير المدفوعة</td><td id="sumUnpaid">0.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- المصاريف اليومية -->
+<div class="card" id="expensesCard">
+  <h2>المصاريف اليومية</h2>
+  <div class="content">
+    <div class="row noprint" style="justify-content:space-between"><button class="btn gray" id="backFromDaily" style="display:none">العودة للصفحة الرئيسية</button>
+      <div class="note">أضف المصروفات وسيتم جمع الإجمالي تلقائيًا.</div>
+      <div>
+        <button class="btn" id="addExp">+ إضافة صف</button>
+        <button class="btn danger" id="clearExp">مسح الجدول</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="expTable" class="wide-sm">
+        <colgroup>
+          <col style="width:12%"><col style="width:28%"><col style="width:14%"><col style="width:18%">
+          <col style="width:14%"><col style="width:14%"><col style="width:10%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="display:none">تاريخ</th>
+            <th>رقم المصروف</th>
+            <th>بيان المصروف</th>
+            <th>نوع المصروف</th>
+            <th>طريقة الدفع</th>
+            <th>قيمة المصروف (ر.س)</th>
+            <th>ملاحظات</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4">إجمالي المصاريف</td>
+            <td id="expTotal">0.00</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- تفصيل المصاريف حسب طريقة الدفع الجديدة -->
+    <div class="row" style="margin-top:14px">
+      <div style="flex:1">
+        <table id="expBreakTable" class="wide-sm" style="min-width:700px">
+          <thead>
+            <tr><th colspan="2" style="text-align:center">تفصيل المصاريف حسب طريقة الدفع</th></tr>
+            <tr><th>البند</th><th>القيمة (ر.س)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>نقدا - موظفين</td><td id="exCashEmp">0.00</td></tr>
+            <tr><td>نقدا - مالك</td><td id="exCashOwner">0.00</td></tr>
+            <tr><td>تحويل بنكي - موظف</td><td id="exBankEmp">0.00</td></tr>
+            <tr><td>تحويل بنكي - مالك</td><td id="exBankOwner">0.00</td></tr>
+            <tr><td>شبكة - موظف</td><td id="exPosEmp">0.00</td></tr>
+            <tr><td>شبكة - مالك</td><td id="exPosOwner">0.00</td></tr>
+            <tr><td>آجل</td><td id="exCredit">0.00</td></tr>
+            <tr><td style="font-weight:800">مجموع المصاريف</td><td id="exMethodsTotal" style="font-weight:800">0.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- الملخص المالي -->
+<div class="card">
+  <h2>الملخص المالي</h2>
+  <div class="content">
+    <table style="width:100%;table-layout:fixed">
+      <tr>
+        <td style="width:50%;">إجمالي الإيرادات (إجمالي الإيجار)</td>
+        <td class="value"><span id="sumRevenue">0.00</span> ر.س</td>
+      </tr>
+      <tr>
+        <td>إجمالي المصاريف</td>
+        <td class="value"><span id="sumExpenses">0.00</span> ر.س</td>
+      </tr>
+      <tr>
+        <td>المركز المالي اليومي</td>
+        <td class="value"><span id="netResult" class="net-positive">0.00</span> ر.س</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<footer class="note" style="text-align:center;margin-top:12px">
+تم إنشاء هذا النظام بواسطة الدكتور زيد دنون © 2025
+</footer>
+
+</div>
+
+<script>
+const fmt2 = (n)=> (isNaN(+n)? "0.00" : (+n).toFixed(2));
+
+/************* البيانات الأساسية *************/
+const daySel = document.getElementById('daySel');
+const monthSel = document.getElementById('monthSel');
+const yearSel = document.getElementById('yearSel');
+(function initDateSelectors(){
+  if(!daySel||!monthSel||!yearSel) return;
+  for(let d=1; d<=31; d++){ const o=document.createElement('option'); o.value=o.textContent=String(d).padStart(2,'0'); daySel.appendChild(o); }
+  ["01","02","03","04","05","06","07","08","09","10","11","12"].forEach(m=>{ const o=document.createElement('option'); o.value=o.textContent=m; monthSel.appendChild(o); });
+  const nowY=new Date().getFullYear();
+  const endY = 2035;
+  const startY = Math.min(nowY-5, endY-15); // نطاق مريح قبل 2035
+  for(let yy=startY; yy<=endY; yy++){ const o=document.createElement('option'); o.value=o.textContent=String(yy); yearSel.appendChild(o); }
+  const t=new Date(); daySel.value=String(t.getDate()).padStart(2,'0'); monthSel.value=String(t.getMonth()+1).padStart(2,'0'); yearSel.value=String(Math.min(t.getFullYear(), endY));
+})();
+
+/************* الإيرادات *************/
+function parseDateInput(val){
+  if(!val) return null;
+  if(/^\\d{2}-\\d{2}-\\d{4}$/.test(val)){ const [d,m,y]=val.split("-"); return new Date(+y, +m-1, +d); }
+  if(/^\\d{4}-\\d{2}-\\d{2}$/.test(val)){ const [y,m,d]=val.split("-"); return new Date(+y, +m-1, +d); }
+  return null;
+}
+function makeTimeSelect(){
+  const s=document.createElement('select'); s.className="input";
+  for(let h=0; h<24; h++){ const hh=String(h).padStart(2,'0'); const o=document.createElement('option'); o.value=`${hh}:00`; o.textContent=`${hh}:00`; s.appendChild(o); }
+  return s;
+}
+function revRow(){
+  const tr=document.createElement('tr');
+  const mk=(type="text")=>{const i=document.createElement('input'); i.type=type; if(type==="number") i.step="0.01"; i.autocomplete="off"; i.className="input"; return i;};
+  const lock=i=>{i.readOnly=true; i.tabIndex=-1; return i;};
+  const td=(el)=>{const c=document.createElement('td'); c.appendChild(el); tr.appendChild(c); return el;};
+
+  const room=mk("text"); room.maxLength=3; room.inputMode="numeric"; room.pattern="\\d{1,3}"; td(room);
+  const guest=mk("text"); guest.maxLength=30; td(guest);
+  const nation=mk("text"); nation.maxLength=12; td(nation);
+  const idno=mk("text"); idno.maxLength=15; idno.inputMode="numeric"; idno.pattern="\\d{1,15}"; td(idno);
+  const mobile=mk("text"); mobile.maxLength=15; mobile.inputMode="numeric"; mobile.pattern="\\d{1,15}"; td(mobile);
+
+  const resType=document.createElement('select'); resType.className="input"; ["","اونلاين","مباشر"].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;resType.appendChild(o);}); td(resType);
+  const payMethod=document.createElement('select'); payMethod.className="input"; ["","اونلاين","نقدا","نقداً","شبكة","تحويل بنكي","آجل"].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;payMethod.appendChild(o);}); td(payMethod);
+
+  const nights=lock(mk("number")); td(nights);
+  const from=mk("date"); td(from);
+  const to=mk("date"); td(to);
+  td(makeTimeSelect());
+  td(makeTimeSelect());
+  const price=mk("number"); price.min=0; price.max=9999; td(price);
+  const rent=lock(mk("number")); td(rent);
+  const paid=mk("number"); paid.min=0; paid.max=999999; td(paid);
+  const remain=lock(mk("number")); td(remain);
+  td(mk("text")).maxLength=30;
+
+  const delTd=document.createElement('td');
+  const delBtn=document.createElement('button');
+  delBtn.className="btn danger";
+  delBtn.textContent="حذف";
+  delBtn.onclick=()=>{ tr.remove(); recalcRevTotals(); };
+  delTd.appendChild(delBtn);
+  tr.appendChild(delTd);
+
+  function recompute(){
+    let d1=from.valueAsDate || parseDateInput(from.value);
+    let d2=to.valueAsDate   || parseDateInput(to.value);
+    if(!(d1 instanceof Date) || isNaN(d1) || !(d2 instanceof Date) || isNaN(d2)){
+      nights.value=""; rent.value=""; remain.value=""; recalcRevTotals(); return;
+    }
+    d1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    d2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
+    const ms = d2.getTime() - d1.getTime();
+    const val = Math.max(0, Math.floor(ms/86400000)); // ليالي
+    nights.value = String(val);
+    const total = val * (parseFloat(price.value)||0);
+    rent.value = fmt2(total);
+    const rem  = total - (parseFloat(paid.value)||0);
+    remain.value = fmt2(rem);
+    remain.style.color = (parseFloat(paid.value)||0) >= total ? "#047857" : "#b91c1c";
+    recalcRevTotals();
+  }
+  [from,to,price,paid].forEach(el=>{ el.addEventListener('input',recompute); el.addEventListener('change',recompute); });
+  [resType,payMethod].forEach(el=>{ el.addEventListener('change', ()=>{ recalcRevTotals(); }); });
+
+  return tr;
+}
+function addRevRow(){ document.querySelector('#revTable tbody').appendChild(revRow()); recalcRevTotals(); }
+document.getElementById('addRev').addEventListener('click', addRevRow);
+document.getElementById('clearRev').addEventListener('click',()=>{ if(confirm('مسح جدول الإيرادات؟')){ document.querySelector('#revTable tbody').innerHTML=''; recalcRevTotals(); }});
+
+function recalcRevTotals(){
+  const tb=document.querySelector('#revTable tbody');
+  let night=0,rent=0,paid=0,remain=0;
+  let sumOnline=0,sumCash=0,sumPos=0,sumBank=0,sumCredit=0,unpaid=0;
+
+  tb.querySelectorAll('tr').forEach(tr=>{
+    const tds=tr.querySelectorAll('td');
+    const pay = tds[6]?.querySelector('select')?.value || "";
+    const nightVal = parseFloat(tds[7]?.querySelector('input')?.value)  || 0;
+    const rentVal  = parseFloat(tds[13]?.querySelector('input')?.value) || 0;
+    const paidVal  = parseFloat(tds[14]?.querySelector('input')?.value) || 0;
+    const remVal   = parseFloat(tds[15]?.querySelector('input')?.value) || 0;
+
+    night  += nightVal;
+    rent   += rentVal;
+    paid   += paidVal;
+    remain += remVal;
+
+    if (pay === "اونلاين") sumOnline += rentVal;
+    if (pay === "نقدا" || pay === "نقداً") sumCash += rentVal;
+    if (pay === "شبكة") sumPos += rentVal;
+    if (pay === "تحويل بنكي") sumBank += rentVal;
+    if (pay === "آجل") sumCredit += rentVal;
+
+    unpaid += remVal;
+  });
+
+  document.getElementById('revNightTotal').textContent  = fmt2(night);
+  document.getElementById('revRentTotal').textContent   = fmt2(rent);
+  document.getElementById('revPaidTotal').textContent   = fmt2(paid);
+  document.getElementById('revRemainTotal').textContent = fmt2(remain);
+
+  const methodsTotal = sumOnline + sumCash + sumPos + sumBank + sumCredit;
+  document.getElementById('sumOnline').textContent = fmt2(sumOnline);
+  document.getElementById('sumCash').textContent   = fmt2(sumCash);
+  document.getElementById('sumPos').textContent    = fmt2(sumPos);
+  document.getElementById('sumBank').textContent   = fmt2(sumBank);
+  document.getElementById('sumCredit').textContent = fmt2(sumCredit);
+  document.getElementById('sumMethodsTotal').textContent = fmt2(methodsTotal);
+  document.getElementById('sumUnpaid').textContent = fmt2(unpaid);
+
+  document.getElementById('sumRevenue').textContent = fmt2(rent);
+  updateNet();
+}
+
+/************* المصاريف *************/
+function expRow(){ const tr=document.createElement('tr'); const expDate=document.createElement('input'); expDate.type='date'; expDate.className='input'; expDate.value=(document.getElementById('yearSel').value||'')+'-'+(document.getElementById('monthSel').value||'')+'-'+(document.getElementById('daySel').value||''); const tdDate=document.createElement('td'); tdDate.style.display='none'; tdDate.appendChild(expDate); tr.appendChild(tdDate);
+  const mk=(type="text")=>{const i=document.createElement('input'); i.type=type; if(type==="number") i.step="0.01"; i.autocomplete="off"; i.className="input"; return i;};
+  const td=(el)=>{const c=document.createElement('td'); c.appendChild(el); tr.appendChild(c); return el;};
+
+  td(mk("text")).maxLength=10;                        // رقم المصروف
+  td(mk("text")).maxLength=40;                        // البيان
+  const kind=document.createElement('select'); kind.className="input"; ["","تشغيل","صيانة","مرافق","رواتب","توريد","أخرى"].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;kind.appendChild(o);}); td(kind);
+  const pay=document.createElement('select'); pay.className="input";
+  ["","نقدا - موظفين","نقدا - مالك","تحويل بنكي - موظف","تحويل بنكي - مالك","شبكة - موظف","شبكة - مالك","آجل"].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;pay.appendChild(o);});
+  td(pay);
+  const val=mk("number"); val.min=0; val.max=999999; td(val);
+  td(mk("text")).maxLength=40;                        // ملاحظات
+  const delTd=document.createElement('td'); const b=document.createElement('button'); b.className="btn danger"; b.textContent="حذف"; b.onclick=()=>{ tr.remove(); recalcExpTotals(); }; delTd.appendChild(b); tr.appendChild(delTd);
+
+  [val,kind,pay].forEach(el=>{ el.addEventListener('input',recalcExpTotals); el.addEventListener('change',recalcExpTotals); });
+  return tr;
+}
+function addExpRow(){ document.querySelector('#expTable tbody').appendChild(expRow()); recalcExpTotals(); }
+document.getElementById('addExp').addEventListener('click', addExpRow);
+document.getElementById('clearExp').addEventListener('click',()=>{ if(confirm('مسح جدول المصاريف؟')){ document.querySelector('#expTable tbody').innerHTML=''; recalcExpTotals(); }});
+
+function recalcExpTotals(){
+  const tb=document.querySelector('#expTable tbody');
+  let total=0;
+  // تفصيل
+  let exCashEmp=0, exCashOwner=0, exBankEmp=0, exBankOwner=0, exPosEmp=0, exPosOwner=0, exCredit=0;
+
+  tb.querySelectorAll('tr').forEach(tr=>{
+    const tds=tr.querySelectorAll('td');
+    const pay = tds[4]?.querySelector('select')?.value || "";
+    const val = parseFloat(tds[5]?.querySelector('input')?.value) || 0;
+
+    total += val;
+
+    if(pay==="نقدا - موظفين") exCashEmp += val;
+    else if(pay==="نقدا - مالك") exCashOwner += val;
+    else if(pay==="تحويل بنكي - موظف") exBankEmp += val;
+    else if(pay==="تحويل بنكي - مالك") exBankOwner += val;
+    else if(pay==="شبكة - موظف") exPosEmp += val;
+    else if(pay==="شبكة - مالك") exPosOwner += val;
+    else if(pay==="آجل") exCredit += val;
+  });
+
+  document.getElementById('expTotal').textContent = fmt2(total);
+  document.getElementById('sumExpenses').textContent = fmt2(total);
+
+  // تحديث تفصيل المصاريف
+  document.getElementById('exCashEmp').textContent   = fmt2(exCashEmp);
+  document.getElementById('exCashOwner').textContent = fmt2(exCashOwner);
+  document.getElementById('exBankEmp').textContent   = fmt2(exBankEmp);
+  document.getElementById('exBankOwner').textContent = fmt2(exBankOwner);
+  document.getElementById('exPosEmp').textContent    = fmt2(exPosEmp);
+  document.getElementById('exPosOwner').textContent  = fmt2(exPosOwner);
+  document.getElementById('exCredit').textContent    = fmt2(exCredit);
+  document.getElementById('exMethodsTotal').textContent = fmt2(exCashEmp+exCashOwner+exBankEmp+exBankOwner+exPosEmp+exPosOwner+exCredit);
+
+  updateNet();
+}
+
+/************* الملخص *************/
+function updateNet(){
+  const rev = parseFloat(document.getElementById('sumRevenue').textContent) || 0;
+  const exp = parseFloat(document.getElementById('sumExpenses').textContent) || 0;
+  const net = rev - exp;
+  const el = document.getElementById('netResult');
+  el.textContent = fmt2(net);
+  el.className = net >= 0 ? "net-positive" : "net-negative";
+}
+
+
+/************* منشئ أوراق Excel منسّقة *************/
+function buildRevSheet(snap){
+  const headers = [
+    "رقم الغرفة","اسم النزيل","الجنسية","الهوية/الإقامة/الجواز","رقم الجوال",
+    "نوع الحجز","طريقة الدفع","عدد ليالي الحجز","من تاريخ","إلى تاريخ",
+    "ساعة الدخول","ساعة المغادرة","قيمة الليلة (ر.س)","إجمالي الإيجار (ر.س)",
+    "المبلغ المدفوع (ر.س)","المبلغ المتبقي (ر.س)","ملاحظات"
+  ];
+  const rows = [headers];
+  (snap.rev||[]).forEach(r=>{
+    rows.push([
+      r.room,r.guest,r.nation,r.id,r.mobile,
+      r.resType,r.pay,Number(r.nights||0),r.from,r.to,
+      r.inTime,r.outTime,Number(r.price||0),Number(r.rent||0),
+      Number(r.paid||0),Number(r.remain||0),r.note
+    ]);
+  });
+  rows.push([]);
+  rows.push(["تفصيل الإيرادات حسب طريقة الدفع","القيمة (ر.س)"]);
+  rows.push(["الإيرادات أونلاين", Number(snap.breakdown.online||0)]);
+  rows.push(["الإيرادات نقداً",  Number(snap.breakdown.cash||0)]);
+  rows.push(["الإيرادات شبكة",  Number(snap.breakdown.pos||0)]);
+  rows.push(["الإيرادات تحويل بنكي", Number(snap.breakdown.bank||0)]);
+  rows.push(["الإيرادات آجل", Number(snap.breakdown.credit||0)]);
+  rows.push(["مجموع الإيرادات", Number(snap.summary.revenue||0)]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:8},{wch:18},{wch:10},{wch:18},{wch:14},
+    {wch:10},{wch:12},{wch:10},{wch:12},{wch:12},
+    {wch:10},{wch:10},{wch:16},{wch:18},
+    {wch:16},{wch:16},{wch:18}
+  ];
+  return ws;
+}
+function buildExpSheet(snap){
+  const headers = ["رقم المصروف","بيان المصروف","نوع المصروف","طريقة الدفع","قيمة المصروف (ر.س)","ملاحظات"];
+  const rows = [headers];
+  (snap.exp||[]).forEach(r=>{
+    rows.push([r.no,r.title,r.kind,r.pay,Number(r.amount||0),r.note]);
+  });
+  rows.push([]);
+  rows.push(["تفصيل المصاريف حسب طريقة الدفع","القيمة (ر.س)"]);
+  rows.push(["نقدا - موظفين", Number(snap.breakdown.exCashEmp||0)]);
+  rows.push(["نقدا - مالك", Number(snap.breakdown.exCashOwner||0)]);
+  rows.push(["تحويل بنكي - موظف", Number(snap.breakdown.exBankEmp||0)]);
+  rows.push(["تحويل بنكي - مالك", Number(snap.breakdown.exBankOwner||0)]);
+  rows.push(["شبكة - موظف", Number(snap.breakdown.exPosEmp||0)]);
+  rows.push(["شبكة - مالك", Number(snap.breakdown.exPosOwner||0)]);
+  rows.push(["آجل", Number(snap.breakdown.exCredit||0)]);
+  rows.push(["مجموع المصاريف", Number(snap.summary.expenses||0)]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:30},{wch:16},{wch:20},{wch:18},{wch:24}];
+  return ws;
+}
+function buildSummarySheet(snap){
+  const rows = [
+    ["اسم المشروع", snap.basic.project||""],
+    ["تاريخ اليوم", snap.basic.date||""],
+    [],
+    ["العنصر","القيمة (ر.س)"],
+    ["إجمالي الإيرادات", Number(snap.summary.revenue||0)],
+    ["إجمالي المصاريف", Number(snap.summary.expenses||0)],
+    ["المركز المالي اليومي", Number(snap.summary.net||0)]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:24},{wch:30}];
+  return ws;
+}
+
+/************* حفظ موحّد (اختيار نوع الملف والمكان) *************/
+function snapshot(){
+  const basic = {
+    project: document.getElementById('projectName')?.value || "",
+    date: (document.getElementById('daySel')?.value||"") + "-" +
+          (document.getElementById('monthSel')?.value||"") + "-" +
+          (document.getElementById('yearSel')?.value||"")
+  };
+  const rev=[], exp=[];
+  document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+    const t=tr.querySelectorAll('td');
+    rev.push({
+      room: t[0]?.querySelector('input')?.value || "",
+      guest: t[1]?.querySelector('input')?.value || "",
+      nation: t[2]?.querySelector('input')?.value || "",
+      id: t[3]?.querySelector('input')?.value || "",
+      mobile: t[4]?.querySelector('input')?.value || "",
+      resType: t[5]?.querySelector('select')?.value || "",
+      pay: t[6]?.querySelector('select')?.value || "",
+      nights: t[7]?.querySelector('input')?.value || "",
+      from: t[8]?.querySelector('input')?.value || "",
+      to: t[9]?.querySelector('input')?.value || "",
+      inTime: t[10]?.querySelector('select')?.value || "",
+      outTime: t[11]?.querySelector('select')?.value || "",
+      price: t[12]?.querySelector('input')?.value || "",
+      rent: t[13]?.querySelector('input')?.value || "",
+      paid: t[14]?.querySelector('input')?.value || "",
+      remain: t[15]?.querySelector('input')?.value || "",
+      note: t[16]?.querySelector('input')?.value || ""
+    });
+  });
+  document.querySelectorAll('#expTable tbody tr').forEach(tr=>{
+    const t=tr.querySelectorAll('td');
+    exp.push({
+      no: t[0]?.querySelector('input')?.value || "",
+      title: t[1]?.querySelector('input')?.value || "",
+      kind: t[2]?.querySelector('select')?.value || "",
+      pay: t[3]?.querySelector('select')?.value || "",
+      amount: t[4]?.querySelector('input')?.value || "",
+      note: t[5]?.querySelector('input')?.value || ""
+    });
+  });
+  const summary={
+    revenue: document.getElementById('sumRevenue').textContent,
+    expenses: document.getElementById('sumExpenses').textContent,
+    net: document.getElementById('netResult').textContent
+  };
+  const breakdown={
+    online: document.getElementById('sumOnline').textContent,
+    cash: document.getElementById('sumCash').textContent,
+    pos: document.getElementById('sumPos').textContent,
+    bank: document.getElementById('sumBank').textContent,
+    credit: document.getElementById('sumCredit').textContent,
+    exCashEmp: document.getElementById('exCashEmp').textContent,
+    exCashOwner: document.getElementById('exCashOwner').textContent,
+    exBankEmp: document.getElementById('exBankEmp').textContent,
+    exBankOwner: document.getElementById('exBankOwner').textContent,
+    exPosEmp: document.getElementById('exPosEmp').textContent,
+    exPosOwner: document.getElementById('exPosOwner').textContent,
+    exCredit: document.getElementById('exCredit').textContent
+  };
+  return {basic,rev,exp,summary,breakdown};
+}
+
+async function saveUnified(){
+  const today = (daySel?.value||"dd")+"-"+(monthSel?.value||"mm")+"-"+(yearSel?.value||"yyyy");
+  const suggested = `نظام_الايرادات_والمصاريف_${today}`;
+
+  async function saveUsingFSAPI(){
+    const opts = {
+      suggestedName: suggested,
+      types: [
+        { description:'Excel Workbook (.xlsx)', accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']} },
+        { description:'JSON (.json)', accept:{'application/json':['.json']} }
+      ]
+    };
+    const handle = await window.showSaveFilePicker(opts);
+    const ext = (handle.name && handle.name.toLowerCase().endsWith('.json')) ? 'json' : 'xlsx';
+    const writable = await handle.createWritable();
+    let blob;
+    if(ext==='json'){
+      blob = new Blob([JSON.stringify(snapshot(), null, 2)], {type:'application/json'});
+    }else{
+      const wb = XLSX.utils.book_new();
+      const snap = snapshot();
+      XLSX.utils.book_append_sheet(wb, buildRevSheet(snap), "الإيرادات اليومية");
+      XLSX.utils.book_append_sheet(wb, buildExpSheet(snap), "المصاريف اليومية");
+      XLSX.utils.book_append_sheet(wb, buildSummarySheet(snap), "الملخص المالي");
+      XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      blob = new Blob([ab], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    }
+    await writable.write(blob); await writable.close();
+    alert('تم الحفظ بنجاح ✅');
+  }
+
+  function fallbackDownload(){
+    const useExcel = confirm('هل تريد حفظ الملف بصيغة Excel؟ اضغط "OK" لـ Excel أو "Cancel" لـ JSON.');
+    if(useExcel){
+      const snap = snapshot(); const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, buildRevSheet(snap), "الإيرادات اليومية");
+      XLSX.utils.book_append_sheet(wb, buildExpSheet(snap), "المصاريف اليومية");
+      XLSX.utils.book_append_sheet(wb, buildSummarySheet(snap), "الملخص المالي");
+      XLSX.writeFile(wb, suggested + '.xlsx');
+    }else{
+      const data = JSON.stringify(snapshot(), null, 2);
+      const a = document.createElement('a');
+      a.download = suggested + '.json';
+      a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  }
+
+  try{
+    if(window.showSaveFilePicker){
+      await saveUsingFSAPI();
+    }else{
+      fallbackDownload();
+    }
+  }catch(e){
+    if(e.name !== 'AbortError'){
+      console.error(e);
+      fallbackDownload();
+    }
+  }
+}
+
+document.getElementById('saveAll').addEventListener('click', ()=>{ saveUnified(); });
+
+document.getElementById('resetAll').addEventListener('click', ()=>{
+  if(!confirm("هل تريد إعادة ضبط الحقول والجداول؟")) return;
+  document.getElementById('projectName').value="";
+  const t=new Date();
+  if(daySel&&monthSel&&yearSel){
+    daySel.value=String(t.getDate()).padStart(2,'0');
+    monthSel.value=String(t.getMonth()+1).padStart(2,'0');
+    yearSel.value=String(Math.min(t.getFullYear(), 2035));
+  }
+  document.querySelector('#revTable tbody').innerHTML='';
+  document.querySelector('#expTable tbody').innerHTML='';
+  addRevRow(); addExpRow();
+  recalcRevTotals(); recalcExpTotals();
+});
+
+// صف افتراضي لكل جدول
+document.addEventListener('DOMContentLoaded', ()=>{ addRevRow(); addExpRow(); });
+</script>
+
+<script>
+(function(){
+  const home = document.getElementById('homeCard');
+  const gotoDaily = document.getElementById('gotoDaily');
+  const gotoHome = document.getElementById('gotoHome');
+  const revCard = document.getElementById('revenuesCard');
+  const expCard = document.getElementById('expensesCard');
+  function showHome(){ home.style.display='block'; revCard.style.display='none'; expCard.style.display='none'; gotoHome.style.display='none'; window.scrollTo({top:0,behavior:'smooth'}); }
+  function showDaily(){ home.style.display='none'; revCard.style.display='block'; expCard.style.display='block'; gotoHome.style.display='inline-flex'; window.scrollTo({top:0,behavior:'smooth'}); }
+  if(gotoDaily) gotoDaily.addEventListener('click', function(){ window.__showDaily(); });
+  if(gotoHome) gotoHome.addEventListener('click', function(){ window.__showHome(); });
+  showHome();
+})();
+// اجعل الدوال متاحة عالميًا
+window.__showHome = (typeof showHome==='function') ? showHome : (function(){ 
+  const home=document.getElementById('homeCard'), rev=document.getElementById('revenuesCard'), exp=document.getElementById('expensesCard'), back=document.getElementById('backFromDaily');
+  return function(){ if(home){home.style.display='block';} if(rev){rev.style.display='none';} if(exp){exp.style.display='none';} 
+    const btn=document.getElementById('gotoHome'); if(btn){btn.style.display='none';} if(back){back.style.display='none';} window.scrollTo({top:0,behavior:'smooth'}); };
+})();
+window.__showDaily = (typeof showDaily==='function') ? showDaily : (function(){
+  const home=document.getElementById('homeCard'), rev=document.getElementById('revenuesCard'), exp=document.getElementById('expensesCard'), back=document.getElementById('backFromDaily');
+  return function(){ if(home){home.style.display='none';} if(rev){rev.style.display='block';} if(exp){exp.style.display='block';} 
+    const btn=document.getElementById('gotoHome'); if(btn){btn.style.display='inline-flex';} if(back){back.style.display='inline-flex';} window.scrollTo({top:0,behavior:'smooth'}); };
+})();
+// اربط زر العودة الجديد
+document.addEventListener('DOMContentLoaded', function(){
+  const back=document.getElementById('backFromDaily');
+  if(back){ back.addEventListener('click', function(){ window.__showHome(); }); }
+});
+function toDate(v){ if(!v) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(v)){const [y,m,d]=v.split('-');return new Date(+y,+m-1,+d);} if(/^\d{2}-\d{2}-\d{4}$/.test(v)){const [d,m,y]=v.split('-');return new Date(+y,+m-1,+d);} return null; }
+function withinDay(target, from, toEx){ if(!(target&&from&&toEx)) return false; const t=+new Date(target.getFullYear(),target.getMonth(),target.getDate()); const f=+new Date(from.getFullYear(),from.getMonth(),from.getDate()); const e=+new Date(toEx.getFullYear(),toEx.getMonth(),toEx.getDate()); return t>=f && t<e; }
+function rangesOverlap(a1,a2,b1,b2){ return (a1<b2)&&(b1<a2); }
+
+document.getElementById('runRoomDay').addEventListener('click', ()=>{
+  const room=(document.getElementById('qRoomDay').value||'').trim();
+  const day=toDate(document.getElementById('qDateDay').value);
+  const tbody=document.querySelector('#tableRoomDay tbody'); tbody.innerHTML='';
+  if(!room||!day) return;
+  document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+    const t=tr.querySelectorAll('td');
+    const r=(t[0]?.querySelector('input')?.value||'').trim();
+    if(r!==room) return;
+    const f=toDate(t[8]?.querySelector('input')?.value);
+    const to=toDate(t[9]?.querySelector('input')?.value);
+    if(!withinDay(day,f,to)) return;
+    const row=document.createElement('tr');
+    function cell(x){const td=document.createElement('td');td.textContent=x;row.appendChild(td);}
+    cell(r); cell(t[1]?.querySelector('input')?.value||''); cell(t[2]?.querySelector('input')?.value||''); cell(t[8]?.querySelector('input')?.value||''); cell(t[9]?.querySelector('input')?.value||''); cell(t[12]?.querySelector('input')?.value||''); cell(t[13]?.querySelector('input')?.value||''); cell(t[14]?.querySelector('input')?.value||''); cell(t[15]?.querySelector('input')?.value||''); tbody.appendChild(row);
+  });
+});
+
+document.getElementById('runRoomRange').addEventListener('click', ()=>{
+  const room=(document.getElementById('qRoomRange').value||'').trim();
+  const d1=toDate(document.getElementById('qFromRoom').value);
+  const d2=toDate(document.getElementById('qToRoom').value);
+  const tbody=document.querySelector('#tableRoomRange tbody'); tbody.innerHTML=''; let total=0;
+  if(!room||!(d1&&d2)) return;
+  document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+    const t=tr.querySelectorAll('td');
+    const r=(t[0]?.querySelector('input')?.value||'').trim(); if(r!==room) return;
+    const f=toDate(t[8]?.querySelector('input')?.value); const to=toDate(t[9]?.querySelector('input')?.value); if(!(f&&to)) return;
+    if(!rangesOverlap(f,to,d1,d2)) return;
+    const nights=parseFloat(t[7]?.querySelector('input')?.value)||0; const rent=parseFloat(t[13]?.querySelector('input')?.value)||0; total+=rent;
+    const row=document.createElement('tr'); function cell(x){const td=document.createElement('td');td.textContent=x;row.appendChild(td);} cell(r); cell(t[1]?.querySelector('input')?.value||''); cell(t[8]?.querySelector('input')?.value||''); cell(t[9]?.querySelector('input')?.value||''); cell(nights); cell(rent.toFixed(2)); tbody.appendChild(row);
+  });
+  document.getElementById('sumRoomRange').textContent=total.toFixed(2);
+});
+
+document.getElementById('runExpRange').addEventListener('click', ()=>{
+  const d1=toDate(document.getElementById('qFromExp').value);
+  const d2=toDate(document.getElementById('qToExp').value);
+  const tbody=document.querySelector('#tableExpRange tbody'); tbody.innerHTML='';
+  if(!(d1&&d2)) return;
+  const map=new Map();
+  document.querySelectorAll('#expTable tbody tr').forEach(tr=>{
+    const t=tr.querySelectorAll('td');
+    const dateStr=t[0]?.querySelector('input')?.value||'';
+    const dt=toDate(dateStr);
+    if(!(dt && dt>=d1 && dt<=d2)) return;
+    const val=parseFloat(t[5]?.querySelector('input')?.value)||0;
+    map.set(dateStr,(map.get(dateStr)||0)+val);
+  });
+  Array.from(map.entries()).sort((a,b)=> new Date(a[0]) - new Date(b[0]) ).forEach(([day,sum])=>{
+    const tr=document.createElement('tr');
+    const c1=document.createElement('td'); c1.textContent=day; tr.appendChild(c1);
+    const c2=document.createElement('td'); c2.textContent=sum.toFixed(2); tr.appendChild(c2);
+    tbody.appendChild(tr);
+  });
+});
+document.getElementById('runDailyTotals').addEventListener('click', ()=>{
+  const d1=toDate(document.getElementById('qFromDaily').value);
+  const d2=toDate(document.getElementById('qToDaily').value);
+  const tbody=document.querySelector('#tableDailyTotals tbody'); tbody.innerHTML='';
+  if(!(d1&&d2)) return;
+  const map=new Map();
+  document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+    const fStr=tr.querySelectorAll('td')[8]?.querySelector('input')?.value||'';
+    const rentVal=parseFloat(tr.querySelectorAll('td')[13]?.querySelector('input')?.value)||0;
+    const f=toDate(fStr); if(!(f && f>=d1 && f<=d2)) return;
+    map.set(fStr,(map.get(fStr)||0)+rentVal);
+  });
+  Array.from(map.entries()).sort((a,b)=> new Date(a[0])-new Date(b[0]) ).forEach(([day,sum])=>{
+    const tr=document.createElement('tr'); const c1=document.createElement('td'); c1.textContent=day; tr.appendChild(c1); const c2=document.createElement('td'); c2.textContent=sum.toFixed(2); tr.appendChild(c2); tbody.appendChild(tr);
+  });
+});
+</script>
+
+<script>
+// ========== حفظ تلقائي واسترجاع يومي (LocalStorage لكل تاريخ) ==========
+(function(){
+  const LS_PREFIX = "revexp_day_";
+  const toast = document.getElementById('autoToast');
+  const daySel = document.getElementById('daySel');
+  const monthSel = document.getElementById('monthSel');
+  const yearSel = document.getElementById('yearSel');
+
+  function currentKey(){
+    if(!daySel || !monthSel || !yearSel) return LS_PREFIX + "unknown";
+    const d = (daySel.value||"01").padStart(2,"0");
+    const m = (monthSel.value||"01").padStart(2,"0");
+    const y = (yearSel.value||"2025");
+    return LS_PREFIX + `${y}-${m}-${d}`;
+  }
+
+  function showToast(){
+    if(!toast) return;
+    toast.classList.remove("show");
+    // force reflow
+    void toast.offsetWidth;
+    toast.classList.add("show");
+    setTimeout(()=>toast.classList.remove("show"), 1800);
+  }
+
+  function serializeTables(){
+    // الإيرادات
+    const rev = [];
+    document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+      const t = tr.querySelectorAll('td');
+      rev.push({
+        room:   t[0]?.querySelector('input')?.value || "",
+        guest:  t[1]?.querySelector('input')?.value || "",
+        nation: t[2]?.querySelector('input')?.value || "",
+        id:     t[3]?.querySelector('input')?.value || "",
+        mobile: t[4]?.querySelector('input')?.value || "",
+        resType:t[5]?.querySelector('select')?.value|| "",
+        pay:    t[6]?.querySelector('select')?.value|| "",
+        nights: t[7]?.querySelector('input')?.value || "",
+        from:   t[8]?.querySelector('input')?.value || "",
+        to:     t[9]?.querySelector('input')?.value || "",
+        inTime: t[10]?.querySelector('select')?.value|| "",
+        outTime:t[11]?.querySelector('select')?.value|| "",
+        price:  t[12]?.querySelector('input')?.value|| "",
+        rent:   t[13]?.querySelector('input')?.value|| "",
+        paid:   t[14]?.querySelector('input')?.value|| "",
+        remain: t[15]?.querySelector('input')?.value|| "",
+        note:   t[16]?.querySelector('input')?.value|| ""
+      });
+    });
+    // المصاريف
+    const exp = [];
+    document.querySelectorAll('#expTable tbody tr').forEach(tr=>{
+      const t = tr.querySelectorAll('td');
+      exp.push({
+        // أول عمود مخفي للتاريخ إن وُجد
+        date:   t[0]?.querySelector('input')?.value || "",
+        no:     t[1]?.querySelector('input')?.value || "",
+        title:  t[2]?.querySelector('input')?.value || "",
+        kind:   t[3]?.querySelector('select')?.value|| "",
+        pay:    t[4]?.querySelector('select')?.value|| "",
+        amount: t[5]?.querySelector('input')?.value|| "",
+        note:   t[6]?.querySelector('input')?.value|| ""
+      });
+    });
+    return {rev, exp};
+  }
+
+  function clearTables(){
+    const revBody = document.querySelector('#revTable tbody');
+    const expBody = document.querySelector('#expTable tbody');
+    if(revBody) revBody.innerHTML = "";
+    if(expBody) expBody.innerHTML = "";
+  }
+
+  function addRevRowFilled(data){
+    // اعتمدًا على expRow()/revRow الموجودة
+    if(typeof addRevRow === 'function'){
+      addRevRow();
+      const tr = document.querySelector('#revTable tbody tr:last-child');
+      if(!tr) return;
+      const t = tr.querySelectorAll('td');
+      (t[0]?.querySelector('input')||{}).value = data.room||"";
+      (t[1]?.querySelector('input')||{}).value = data.guest||"";
+      (t[2]?.querySelector('input')||{}).value = data.nation||"";
+      (t[3]?.querySelector('input')||{}).value = data.id||"";
+      (t[4]?.querySelector('input')||{}).value = data.mobile||"";
+      if(t[5]?.querySelector('select')) t[5].querySelector('select').value = data.resType||"";
+      if(t[6]?.querySelector('select')) t[6].querySelector('select').value = data.pay||"";
+      // الحقول المحسوبة/المرتبطة بالتواريخ
+      (t[7]?.querySelector('input')||{}).value  = data.nights||"";
+      (t[8]?.querySelector('input')||{}).value  = data.from||"";
+      (t[9]?.querySelector('input')||{}).value  = data.to||"";
+      if(t[10]?.querySelector('select')) t[10].querySelector('select').value = data.inTime||"";
+      if(t[11]?.querySelector('select')) t[11].querySelector('select').value = data.outTime||"";
+      (t[12]?.querySelector('input')||{}).value = data.price||"";
+      (t[13]?.querySelector('input')||{}).value = data.rent||"";
+      (t[14]?.querySelector('input')||{}).value = data.paid||"";
+      (t[15]?.querySelector('input')||{}).value = data.remain||"";
+      (t[16]?.querySelector('input')||{}).value = data.note||"";
+      // إعادة حساب المجاميع بعد الاسترجاع
+      if(typeof recalcRevTotals === 'function') recalcRevTotals();
+    }
+  }
+
+  function addExpRowFilled(data){
+    if(typeof addExpRow === 'function'){
+      addExpRow();
+      const tr = document.querySelector('#expTable tbody tr:last-child');
+      if(!tr) return;
+      const t = tr.querySelectorAll('td');
+      // إن وُجد عمود التاريخ المخفي
+      if(t[0]?.querySelector('input')) t[0].querySelector('input').value = data.date||"";
+      (t[1]?.querySelector('input')||{}).value = data.no||"";
+      (t[2]?.querySelector('input')||{}).value = data.title||"";
+      if(t[3]?.querySelector('select')) t[3].querySelector('select').value = data.kind||"";
+      if(t[4]?.querySelector('select')) t[4].querySelector('select').value = data.pay||"";
+      (t[5]?.querySelector('input')||{}).value = data.amount||"";
+      (t[6]?.querySelector('input')||{}).value = data.note||"";
+      if(typeof recalcExpTotals === 'function') recalcExpTotals();
+    }
+  }
+
+  function restoreFromLocal(){
+    try{
+      const raw = localStorage.getItem(currentKey());
+      if(!raw) { clearTables(); if(typeof recalcRevTotals==='function') recalcRevTotals(); if(typeof recalcExpTotals==='function') recalcExpTotals(); return; }
+      const obj = JSON.parse(raw);
+      clearTables();
+      (obj.rev||[]).forEach(addRevRowFilled);
+      (obj.exp||[]).forEach(addExpRowFilled);
+      if(typeof recalcRevTotals==='function') recalcRevTotals();
+      if(typeof recalcExpTotals==='function') recalcExpTotals();
+    }catch(e){ console.error("restoreFromLocal error", e); }
+  }
+
+  let saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      try{
+        const data = serializeTables();
+        localStorage.setItem(currentKey(), JSON.stringify(data));
+        showToast();
+      }catch(e){ console.error("save local error", e); }
+    }, 800);
+  }
+
+  // اغلف دوال إعادة الحساب لتشمل الحفظ
+  if(typeof recalcRevTotals === 'function'){
+    const _rev = recalcRevTotals;
+    window.recalcRevTotals = function(){ _rev(); scheduleSave(); };
+  }
+  if(typeof recalcExpTotals === 'function'){
+    const _exp = recalcExpTotals;
+    window.recalcExpTotals = function(){ _exp(); scheduleSave(); };
+  }
+
+  // غيّر التاريخ = غيّر الملف اليومي
+  ['change','input'].forEach(evt=>{
+    if(daySel) daySel.addEventListener(evt, restoreFromLocal);
+    if(monthSel) monthSel.addEventListener(evt, restoreFromLocal);
+    if(yearSel) yearSel.addEventListener(evt, restoreFromLocal);
+  });
+
+  // زر إعادة الضبط يمسح التخزين لهذا اليوم أيضًا
+  const resetBtn = document.getElementById('resetAll');
+  if(resetBtn){
+    resetBtn.addEventListener('click', function(){
+      try{ localStorage.removeItem(currentKey()); showToast(); }catch(e){}
+    });
+  }
+
+  // عند التحميل الأول
+  document.addEventListener('DOMContentLoaded', restoreFromLocal);
+  // وأيضًا مباشرة تحسبًا للترتيب
+  restoreFromLocal();
+})();
+</script>
+
+
+<script>
+// v19b: Reset button clears ONLY home searches when on homepage; keeps daily clear as before
+document.addEventListener('DOMContentLoaded', function(){
+  var resetBtn = document.getElementById('resetAll');
+  var homeCard = document.getElementById('homeCard');
+  var toast = document.getElementById('autoToast');
+
+  function isHomeVisible(){
+    return homeCard && homeCard.style.display !== 'none';
+  }
+  function clearHomeSearches(){
+    var ids = ['qRoomDay','qDateDay','qRoomRange','qFromRoom','qToRoom','qFromExp','qToExp','qFromDaily','qToDaily'];
+    ids.forEach(function(id){ var el = document.getElementById(id); if(el){ el.value = ''; } });
+    var tbls = ['tableRoomDay','tableRoomRange','tableExpRange','tableDailyTotals'];
+    tbls.forEach(function(tid){ var tb = document.querySelector('#'+tid+' tbody'); if(tb){ tb.innerHTML=''; } });
+    var sums = ['sumRoomRange','sumExpRange'];
+    sums.forEach(function(sid){ var s=document.getElementById(sid); if(s){ s.textContent='0.00'; } });
+    if(toast){ toast.textContent = '🧹 تم مسح عمليات البحث'; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1800); }
+  }
+
+  if(resetBtn){
+    // preserve existing listeners by adding a guard
+    resetBtn.addEventListener('click', function(e){
+      if(isHomeVisible()){
+        e.preventDefault();
+        e.stopPropagation();
+        clearHomeSearches();
+      }
+    }, true);
+  }
+});
+</script>
+
+
+<script>
+// v19c: Ultra-robust search bindings + vertical stacking already handled by CSS
+document.addEventListener('DOMContentLoaded', function(){
+  function byId(id){ return document.getElementById(id); }
+  function toDate(v){
+    if(!v) return null;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v)){const [y,m,d]=v.split('-');return new Date(+y,+m-1,+d);}
+    if(/^\d{2}-\d{2}-\d{4}$/.test(v)){const [d,m,y]=v.split('-');return new Date(+y,+m-1,+d);}
+    return null;
+  }
+  function withinDay(target, from, toEx){ if(!(target&&from&&toEx)) return false; const t=+new Date(target.getFullYear(),target.getMonth(),target.getDate()); const f=+new Date(from.getFullYear(),from.getMonth(),from.getDate()); const e=+new Date(toEx.getFullYear(),toEx.getMonth(),toEx.getDate()); return t>=f && t<e; }
+  function rangesOverlap(a1,a2,b1,b2){ return (a1<b2)&&(b1<a2); }
+
+  // Delegate clicks from homeCard to handle any future re-renders
+  var home = byId('homeCard');
+  if(home){
+    home.addEventListener('click', function(ev){
+      var t = ev.target;
+      if(!t) return;
+      if(t.id==='runRoomDay'){ // 1) room in a specific day
+        const room=(byId('qRoomDay').value||'').trim();
+        const day=toDate(byId('qDateDay').value);
+        const tbody=document.querySelector('#tableRoomDay tbody'); if(tbody) tbody.innerHTML='';
+        if(!room||!day) return;
+        document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+          const td=tr.querySelectorAll('td');
+          const r=(td[0]?.querySelector('input')?.value||'').trim();
+          if(r!==room) return;
+          const f=toDate(td[8]?.querySelector('input')?.value);
+          const to=toDate(td[9]?.querySelector('input')?.value);
+          if(!withinDay(day,f,to)) return;
+          const row=document.createElement('tr');
+          function cell(x){const c=document.createElement('td');c.textContent=x;row.appendChild(c);}
+          cell(r); cell(td[1]?.querySelector('input')?.value||''); cell(td[2]?.querySelector('input')?.value||''); cell(td[8]?.querySelector('input')?.value||''); cell(td[9]?.querySelector('input')?.value||''); cell(td[12]?.querySelector('input')?.value||''); cell(td[13]?.querySelector('input')?.value||''); cell(td[14]?.querySelector('input')?.value||''); cell(td[15]?.querySelector('input')?.value||'');
+          if(tbody) tbody.appendChild(row);
+        });
+      }
+      if(t.id==='runRoomRange'){ // 2) room revenues by range
+        const room=(byId('qRoomRange').value||'').trim();
+        const d1=toDate(byId('qFromRoom').value);
+        const d2=toDate(byId('qToRoom').value);
+        const tbody=document.querySelector('#tableRoomRange tbody'); if(tbody) tbody.innerHTML='';
+        let total=0;
+        if(!room||!(d1&&d2)) return;
+        document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+          const td=tr.querySelectorAll('td');
+          const r=(td[0]?.querySelector('input')?.value||'').trim(); if(r!==room) return;
+          const f=toDate(td[8]?.querySelector('input')?.value); const to=toDate(td[9]?.querySelector('input')?.value); if(!(f&&to)) return;
+          if(!rangesOverlap(f,to,d1,d2)) return;
+          const nights=parseFloat(td[7]?.querySelector('input')?.value)||0; const rent=parseFloat(td[13]?.querySelector('input')?.value)||0; total+=rent;
+          const row=document.createElement('tr'); function cell(x){const c=document.createElement('td');c.textContent=x;row.appendChild(c);} cell(r); cell(td[1]?.querySelector('input')?.value||''); cell(td[8]?.querySelector('input')?.value||''); cell(td[9]?.querySelector('input')?.value||''); cell(nights); cell(rent.toFixed(2)); if(tbody) tbody.appendChild(row);
+        });
+        var s=document.getElementById('sumRoomRange'); if(s) s.textContent = total.toFixed(2);
+      }
+      if(t.id==='runExpRange'){ /* handler moved to dedicated listener above */ }
+if(t.id==='runDailyTotals'){ // 4) daily totals inside range
+        const d1=toDate(byId('qFromDaily').value);
+        const d2=toDate(byId('qToDaily').value);
+        const tbody=document.querySelector('#tableDailyTotals tbody'); if(tbody) tbody.innerHTML='';
+        if(!(d1&&d2)) return;
+        const map=new Map();
+        document.querySelectorAll('#revTable tbody tr').forEach(tr=>{
+          const fStr=tr.querySelectorAll('td')[8]?.querySelector('input')?.value||'';
+          const rentVal=parseFloat(tr.querySelectorAll('td')[13]?.querySelector('input')?.value)||0;
+          const f=toDate(fStr); if(!(f && f>=d1 && f<=d2)) return;
+          map.set(fStr,(map.get(fStr)||0)+rentVal);
+        });
+        Array.from(map.entries()).sort((a,b)=> new Date(a[0])-new Date(b[0]) ).forEach(([day,sum])=>{
+          const tr=document.createElement('tr'); const c1=document.createElement('td'); c1.textContent=day; tr.appendChild(c1); const c2=document.createElement('td'); c2.textContent=sum.toFixed(2); tr.appendChild(c2); if(tbody) tbody.appendChild(tr);
+        });
+      }
+    });
+  }
+});
+</script>
+
+
+<script>
+// v26: بحث متعدد الأيام يعتمد على جميع الأيام المخزّنة في LocalStorage
+document.addEventListener('DOMContentLoaded', function () {
+  const LS_PREFIX = "revexp_day_";
+  function byId(id){ return document.getElementById(id); }
+  function toDateStrict(v){
+    if(!v) return null;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+      const [y,m,d] = v.split("-"); return new Date(+y, +m-1, +d);
+    }
+    if(/^\d{2}-\d{2}-\d{4}$/.test(v)){
+      const [d,m,y] = v.split("-"); return new Date(+y, +m-1, +d);
+    }
+    return null;
+  }
+  function dayKeyFromDate(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${dd}`;
+  }
+  function formatDDMMYYYY(d){
+    const dd = String(d.getDate()).padStart(2,"0");
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const y = d.getFullYear();
+    return `${dd}-${m}-${y}`;
+  }
+  function loadAllSnapshots(){
+    const all = [];
+    for(let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      if(!key || !key.startsWith(LS_PREFIX)) continue;
+      let obj;
+      try{
+        obj = JSON.parse(localStorage.getItem(key) || "{}");
+      }catch(e){
+        continue;
+      }
+      const dayStr = key.slice(LS_PREFIX.length); // YYYY-MM-DD
+      const rev = Array.isArray(obj.rev) ? obj.rev : [];
+      const exp = Array.isArray(obj.exp) ? obj.exp : [];
+      all.push({ key, dayStr, rev, exp });
+    }
+    return all;
+  }
+
+  function attachSearchHandler(id, handler){
+    const btn = byId(id);
+    if(!btn) return;
+    btn.addEventListener("click", function(ev){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      ev.stopPropagation();
+      handler();
+    }, true); // capture ليتوقف أي مستمع قديم
+  }
+
+  // 1) بحث غرفة في يوم محدد (من جميع الأيام المخزّنة)
+  attachSearchHandler("runRoomDay", function(){
+    const room = (byId("qRoomDay").value || "").trim();
+    const day  = toDateStrict(byId("qDateDay").value);
+    const tbody = document.querySelector("#tableRoomDay tbody");
+    if(tbody) tbody.innerHTML = "";
+    if(!room || !day) return;
+
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const dayEnd   = new Date(dayStart.getTime() + 86400000);
+
+    const snaps = loadAllSnapshots();
+    snaps.forEach(snap => {
+      (snap.rev || []).forEach(r => {
+        if( (r.room || "").trim() !== room ) return;
+        const f  = toDateStrict(r.from);
+        const to = toDateStrict(r.to);
+        if(!(f && to)) return;
+        // تقاطع مع هذا اليوم
+        if(!(f < dayEnd && to > dayStart)) return;
+
+        const tr = document.createElement("tr");
+        function cell(x){ const td = document.createElement("td"); td.textContent = x; tr.appendChild(td); }
+        cell(r.room || "");
+        cell(r.guest || "");
+        cell(r.nation || "");
+        cell(r.from || "");
+        cell(r.to || "");
+        cell(r.price || "");
+        cell(r.rent || "");
+        cell(r.paid || "");
+        cell(r.remain || "");
+        if(tbody) tbody.appendChild(tr);
+      });
+    });
+  });
+
+  // 2) بحث إيرادات غرفة حسب فترة (من جميع الأيام)
+  attachSearchHandler("runRoomRange", function(){
+    const room = (byId("qRoomRange").value || "").trim();
+    const d1   = toDateStrict(byId("qFromRoom").value);
+    const d2   = toDateStrict(byId("qToRoom").value);
+    const tbody = document.querySelector("#tableRoomRange tbody");
+    const sumCell = byId("sumRoomRange");
+    if(tbody) tbody.innerHTML = "";
+    if(sumCell) sumCell.textContent = "0.00";
+    if(!room || !(d1 && d2)) return;
+
+    const start = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    const end   = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate() + 1); // حصرية
+    let total = 0;
+
+    const snaps = loadAllSnapshots();
+    snaps.forEach(snap => {
+      (snap.rev || []).forEach(r => {
+        if( (r.room || "").trim() !== room ) return;
+        const f  = toDateStrict(r.from);
+        const to = toDateStrict(r.to);
+        if(!(f && to)) return;
+        if(!(f < end && to > start)) return;
+
+        const nights = parseFloat(r.nights || "0") || 0;
+        const rent   = parseFloat(r.rent   || "0") || 0;
+        total += rent;
+
+        const tr = document.createElement("tr");
+        function cell(x){ const td = document.createElement("td"); td.textContent = x; tr.appendChild(td); }
+        cell(r.room || "");
+        cell(r.guest || "");
+        cell(r.from || "");
+        cell(r.to || "");
+        cell(nights);
+        cell(rent.toFixed(2));
+        if(tbody) tbody.appendChild(tr);
+      });
+    });
+    if(sumCell) sumCell.textContent = total.toFixed(2);
+  });
+
+  // 3) مجموع المصاريف يوميًا داخل فترة (من جميع الأيام)
+  attachSearchHandler("runExpRange", function(){
+    const d1 = toDateStrict(byId("qFromExp").value);
+    const d2 = toDateStrict(byId("qToExp").value);
+    const tbody = document.querySelector("#tableExpRange tbody");
+    if(tbody) tbody.innerHTML = "";
+    if(!(d1 && d2)) return;
+
+    const start = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    const end   = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate() + 1);
+    const map = new Map(); // dayKey => sum
+
+    const snaps = loadAllSnapshots();
+    snaps.forEach(snap => {
+      const fallbackDay = toDateStrict(snap.dayStr);
+      (snap.exp || []).forEach(e => {
+        const base = toDateStrict(e.date) || fallbackDay;
+        if(!base) return;
+        const day = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+        if(!(day >= start && day < end)) return;
+        const key = dayKeyFromDate(day);
+        const val = parseFloat(e.amount || "0") || 0;
+        map.set(key, (map.get(key) || 0) + val);
+      });
+    });
+
+    Array.from(map.entries())
+      .sort((a,b)=> new Date(a[0]) - new Date(b[0]))
+      .forEach(([key,sum])=>{
+        const d = toDateStrict(key);
+        const tr = document.createElement("tr");
+        const c1 = document.createElement("td");
+        c1.textContent = d ? formatDDMMYYYY(d) : key;
+        const c2 = document.createElement("td");
+        c2.textContent = sum.toFixed(2);
+        tr.appendChild(c1); tr.appendChild(c2);
+        if(tbody) tbody.appendChild(tr);
+      });
+  });
+
+  // 4) مجموع الإيرادات يوميًا داخل فترة (من جميع الأيام)
+  attachSearchHandler("runDailyTotals", function(){
+    const d1 = toDateStrict(byId("qFromDaily").value);
+    const d2 = toDateStrict(byId("qToDaily").value);
+    const tbody = document.querySelector("#tableDailyTotals tbody");
+    if(tbody) tbody.innerHTML = "";
+    if(!(d1 && d2)) return;
+
+    const start = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    const end   = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate() + 1);
+    const map = new Map(); // dayKey => sumRent
+
+    const snaps = loadAllSnapshots();
+    snaps.forEach(snap => {
+      (snap.rev || []).forEach(r => {
+        const f = toDateStrict(r.from);
+        if(!f) return;
+        const day = new Date(f.getFullYear(), f.getMonth(), f.getDate());
+        if(!(day >= start && day < end)) return;
+        const key = dayKeyFromDate(day);
+        const rent = parseFloat(r.rent || "0") || 0;
+        map.set(key, (map.get(key) || 0) + rent);
+      });
+    });
+
+    Array.from(map.entries())
+      .sort((a,b)=> new Date(a[0]) - new Date(b[0]))
+      .forEach(([key,sum])=>{
+        const d = toDateStrict(key);
+        const tr = document.createElement("tr");
+        const c1 = document.createElement("td");
+        c1.textContent = d ? formatDDMMYYYY(d) : key;
+        const c2 = document.createElement("td");
+        c2.textContent = sum.toFixed(2);
+        tr.appendChild(c1); tr.appendChild(c2);
+        if(tbody) tbody.appendChild(tr);
+      });
+  });
+});
+</script>
+</body>
+</html>
+
